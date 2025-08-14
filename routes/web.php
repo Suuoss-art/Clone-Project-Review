@@ -179,3 +179,34 @@ Route::post('/pm/notifications/mark-all-read', function () {
         ->update(['is_read' => true]);
     return response()->json(['status' => 'success']);
 })->middleware('auth');
+
+// HOD notification routes
+Route::get('/hod/notifications', function () {
+    return \App\Models\Notification::where('user_id', Auth::id())
+        ->where('is_read', false)
+        ->latest()
+        ->get()
+        ->map(function ($notification) {
+            return [
+                'id' => $notification->id,
+                'message' => $notification->message,
+                'type' => $notification->type,
+                'data' => $notification->data,
+                'created_at' => $notification->created_at,
+                'unread' => !$notification->is_read
+            ];
+        });
+})->middleware('auth');
+
+Route::post('/hod/notifications/mark-all-read', function () {
+    \App\Models\Notification::where('user_id', Auth::id())
+        ->update(['is_read' => true]);
+    return response()->json(['status' => 'success']);
+})->middleware('auth');
+
+Route::post('/hod/notifications/{id}/mark-read', function ($id) {
+    \App\Models\Notification::where('id', $id)
+        ->where('user_id', Auth::id())
+        ->update(['is_read' => true]);
+    return response()->json(['status' => 'success']);
+})->middleware('auth');
