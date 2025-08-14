@@ -393,7 +393,25 @@ document.addEventListener('DOMContentLoaded', function () {
 <div class="topbar">
   <div><h6 class="mb-0 fw-bold">Manajemen Arsip Dokumen dan Komisi</h6></div>
   <div class="d-flex align-items-center gap-3">
-    <i class="bi bi-bell"></i>
+    <!-- Notification Bell -->
+    <div class="dropdown">
+      <button class="btn btn-link position-relative p-0" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-bell fs-5"></i>
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">
+          0
+        </span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown" style="min-width: 300px; max-height: 400px; overflow-y: auto;">
+        <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">
+          Notifikasi
+          <button class="btn btn-sm btn-outline-primary" id="markAllRead">Tandai Semua Dibaca</button>
+        </h6></li>
+        <li><hr class="dropdown-divider"></li>
+        <div id="notificationList">
+          <li class="dropdown-item text-muted">Memuat notifikasi...</li>
+        </div>
+      </ul>
+    </div>
   </div>
 </div>
 
@@ -894,5 +912,204 @@ document.addEventListener('DOMContentLoaded', function () {
   </div>
 
 </div>
+
+<!-- Pusher and Laravel Echo Scripts (if using real-time notifications) -->
+@if(config('broadcasting.default') === 'pusher')
+<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.0/dist/echo.iife.js"></script>
+<script>
+    // Initialize Echo with Pusher
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        key: '{{ config("broadcasting.connections.pusher.key") }}',
+        cluster: '{{ config("broadcasting.connections.pusher.options.cluster") }}',
+        forceTLS: true
+    });
+</script>
+@endif
+
+<!-- HOD Notifications Script -->
+<script>
+    // Inline HOD notification script (embedded for simplicity)
+    // This would normally be in a separate file
+
+    // HOD Notification System
+    function loadHodNotifications() {
+        fetch('/hod/notifications')
+            .then(res => res.json())
+            .then(data => {
+                let list = document.getElementById('notificationList');
+                let badge = document.getElementById('notificationBadge');
+
+                list.innerHTML = '';
+
+                if (data.length > 0) {
+                    data.forEach(notification => {
+                        let timeAgo = new Date(notification.created_at).toLocaleString('id-ID');
+                        let projectLink = '';
+                        
+                        // Add link to project if it's a commission notification
+                        if (notification.type === 'commission_submitted' && notification.data && notification.data.project_id) {
+                            projectLink = `<a href="/hod/komisi/${notification.data.project_id}" class="btn btn-sm btn-primary mt-2">Lihat Detail</a>`;
+                        }
+
+                        let item = `
+                            <li class="dropdown-item border-bottom py-2" data-notification-id="${notification.id}">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <p class="mb-1 small">${notification.message}</p>
+                                        <small class="text-muted">${timeAgo}</small>
+                                        ${projectLink}
+                                    </div>
+                                    <button class="btn btn-sm btn-link text-muted mark-read-btn" data-id="${notification.id}">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                </div>
+                            </li>`;
+                        list.innerHTML += item;
+                    });
+
+                    // Add click handlers for mark as read buttons
+                    document.querySelectorAll('.mark-read-btn').forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            markNotificationAsRead(this.dataset.id);
+                        });
+                    });
+                } else {
+                    list.innerHTML = `<li class="dropdown-item text-muted">Tidak ada notifikasi baru</li>`;
+                }
+
+                // Update badge
+                if (data.length > 0) {
+                    badge.textContent = data.length;
+                    badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                console.error('Error loading notifications:', err);
+                document.getElementById('notificationList').innerHTML = 
+                    `<li class="dropdown-item text-danger">Gagal memuat notifikasi</li>`;
+            });
+    }
+
+    function markNotificationAsRead(notificationId) {
+        fetch(`/hod/notifications/${notificationId}/mark-read`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Remove the notification from the list
+                const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                if (notificationElement) {
+                    notificationElement.remove();
+                }
+                // Reload notifications to update badge
+                loadHodNotifications();
+            }
+        })
+        .catch(err => {
+            console.error('Error marking notification as read:', err);
+        });
+    }
+
+    function markAllHodNotificationsAsRead() {
+        fetch('/hod/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                loadHodNotifications();
+            }
+        })
+        .catch(err => {
+            console.error('Error marking all notifications as read:', err);
+        });
+    }
+
+    // Toast notification function
+    function showNotificationToast(title, message) {
+        // Create toast element if it doesn't exist
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toastId = 'toast-' + Date.now();
+        const toastHTML = `
+            <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <i class="bi bi-bell-fill text-primary me-2"></i>
+                    <strong class="me-auto">${title}</strong>
+                    <small>Baru saja</small>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+
+        // Show the toast
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+
+        // Remove toast element after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            toastElement.remove();
+        });
+    }
+
+    // Initialize HOD notifications
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load notifications on page load
+        loadHodNotifications();
+
+        // Mark all as read handler
+        const markAllBtn = document.getElementById('markAllRead');
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                markAllHodNotificationsAsRead();
+            });
+        }
+
+        // Setup real-time notifications if Echo is available
+        if (typeof window.Echo !== 'undefined') {
+            window.Echo.channel('hod-notifications')
+                .listen('.commission.submitted', (e) => {
+                    console.log('New commission notification:', e);
+                    
+                    // Show toast notification
+                    showNotificationToast('Komisi Baru', `PM ${e.pm_name} telah menginput komisi untuk proyek ${e.project_title}`);
+                    
+                    // Reload notifications
+                    loadHodNotifications();
+                });
+        }
+
+        // Refresh notifications every 30 seconds
+        setInterval(loadHodNotifications, 30000);
+    });
+</script>
+
 </body>
 </html>

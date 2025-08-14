@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOD Notification System Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">HOD Notification System Demo</h5>
+                        <!-- Notification Bell -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary position-relative" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-bell"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">
+                                    0
+                                </span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown" style="min-width: 300px; max-height: 400px; overflow-y: auto;">
+                                <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">
+                                    Notifikasi
+                                    <button class="btn btn-sm btn-outline-primary" id="markAllRead">Tandai Semua Dibaca</button>
+                                </h6></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <div id="notificationList">
+                                    <li class="dropdown-item text-muted">Tidak ada notifikasi</li>
+                                </div>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h6>Simulasi PM Input Komisi</h6>
+                        <p>Klik tombol di bawah untuk mensimulasikan PM yang menginput komisi dan memicu notifikasi untuk HOD.</p>
+                        
+                        <form id="simulateCommissionForm">
+                            <div class="mb-3">
+                                <label class="form-label">Nama PM</label>
+                                <input type="text" class="form-control" id="pmName" value="John Doe" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Nama Proyek</label>
+                                <input type="text" class="form-control" id="projectTitle" value="Sistem Manajemen Inventori" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Total Margin</label>
+                                <input type="number" class="form-control" id="totalMargin" value="50000000" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Simulasi Input Komisi</button>
+                        </form>
+
+                        <hr class="my-4">
+
+                        <h6>Features Implemented:</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-check-circle text-success me-2"></i>Real-time notification badge</span>
+                                <span class="badge bg-success">✓</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-check-circle text-success me-2"></i>Notification dropdown with details</span>
+                                <span class="badge bg-success">✓</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-check-circle text-success me-2"></i>Mark individual notifications as read</span>
+                                <span class="badge bg-success">✓</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-check-circle text-success me-2"></i>Mark all notifications as read</span>
+                                <span class="badge bg-success">✓</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-check-circle text-success me-2"></i>Toast notifications for new commissions</span>
+                                <span class="badge bg-success">✓</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-clock text-warning me-2"></i>Real-time Pusher integration</span>
+                                <span class="badge bg-warning">Pending</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+    <script>
+        // Demo notification data
+        let notifications = [];
+        let notificationId = 1;
+
+        function addNotification(pmName, projectTitle, margin) {
+            const notification = {
+                id: notificationId++,
+                message: `Komisi baru telah diinput oleh PM ${pmName} untuk proyek '${projectTitle}'. Total margin: Rp ${parseInt(margin).toLocaleString('id-ID')}`,
+                type: 'commission_submitted',
+                data: {
+                    project_id: Math.floor(Math.random() * 100),
+                    project_title: projectTitle,
+                    pm_name: pmName,
+                    margin: margin
+                },
+                created_at: new Date().toISOString(),
+                unread: true
+            };
+            
+            notifications.unshift(notification);
+            updateNotificationDisplay();
+            showNotificationToast('Komisi Baru', `PM ${pmName} telah menginput komisi untuk proyek ${projectTitle}`);
+        }
+
+        function updateNotificationDisplay() {
+            const list = document.getElementById('notificationList');
+            const badge = document.getElementById('notificationBadge');
+            
+            const unreadNotifications = notifications.filter(n => n.unread);
+            
+            list.innerHTML = '';
+
+            if (unreadNotifications.length > 0) {
+                unreadNotifications.forEach(notification => {
+                    const timeAgo = new Date(notification.created_at).toLocaleString('id-ID');
+                    const projectLink = `<a href="#" class="btn btn-sm btn-primary mt-2" onclick="alert('Navigate to project details')">Lihat Detail</a>`;
+
+                    const item = `
+                        <li class="dropdown-item border-bottom py-2" data-notification-id="${notification.id}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <p class="mb-1 small">${notification.message}</p>
+                                    <small class="text-muted">${timeAgo}</small>
+                                    ${projectLink}
+                                </div>
+                                <button class="btn btn-sm btn-link text-muted mark-read-btn" data-id="${notification.id}">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                            </div>
+                        </li>`;
+                    list.innerHTML += item;
+                });
+
+                // Add click handlers for mark as read buttons
+                document.querySelectorAll('.mark-read-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        markNotificationAsRead(parseInt(this.dataset.id));
+                    });
+                });
+
+                badge.textContent = unreadNotifications.length;
+                badge.style.display = 'inline';
+            } else {
+                list.innerHTML = `<li class="dropdown-item text-muted">Tidak ada notifikasi baru</li>`;
+                badge.style.display = 'none';
+            }
+        }
+
+        function markNotificationAsRead(notificationId) {
+            const notification = notifications.find(n => n.id === notificationId);
+            if (notification) {
+                notification.unread = false;
+                updateNotificationDisplay();
+            }
+        }
+
+        function markAllNotificationsAsRead() {
+            notifications.forEach(n => n.unread = false);
+            updateNotificationDisplay();
+        }
+
+        function showNotificationToast(title, message) {
+            const toastContainer = document.getElementById('toast-container');
+            const toastId = 'toast-' + Date.now();
+            const toastHTML = `
+                <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast-header">
+                        <i class="bi bi-bell-fill text-primary me-2"></i>
+                        <strong class="me-auto">${title}</strong>
+                        <small>Baru saja</small>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                </div>
+            `;
+
+            toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+            toast.show();
+
+            toastElement.addEventListener('hidden.bs.toast', function() {
+                toastElement.remove();
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mark all as read handler
+            document.getElementById('markAllRead').addEventListener('click', function(e) {
+                e.preventDefault();
+                markAllNotificationsAsRead();
+            });
+
+            // Simulate commission form
+            document.getElementById('simulateCommissionForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const pmName = document.getElementById('pmName').value;
+                const projectTitle = document.getElementById('projectTitle').value;
+                const totalMargin = document.getElementById('totalMargin').value;
+                
+                addNotification(pmName, projectTitle, totalMargin);
+            });
+
+            // Add some demo notifications
+            addNotification('Jane Smith', 'Aplikasi E-Commerce', '75000000');
+            addNotification('Bob Johnson', 'Portal Berita Online', '45000000');
+        });
+    </script>
+</body>
+</html>

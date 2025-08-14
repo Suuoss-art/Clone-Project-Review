@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Project;
 use App\Models\Komisi;
+use App\Events\CommissionSubmitted;
 use Illuminate\Support\Facades\Auth;
 
 class KomisiPMController extends Controller
@@ -29,6 +30,9 @@ class KomisiPMController extends Controller
             'komisi.*' => 'required|numeric|min:0|max:100'
         ]);
 
+        $project = Project::findOrFail($request->project_id);
+        $pm = Auth::user();
+
         foreach ($request->komisi as $personelId => $persentase) {
             $projectPersonel = \App\Models\ProjectPersonel::findOrFail($personelId);
             $userId = $projectPersonel->user_id;
@@ -44,6 +48,12 @@ class KomisiPMController extends Controller
                 
             ]);
         }
+
+        // Dispatch event for HOD notification
+        event(new CommissionSubmitted($project, $pm, [
+            'margin' => $request->margin,
+            'komisi' => $request->komisi
+        ]));
 
         return redirect()->back()->with('success', 'Komisi berhasil disimpan.');
     }
