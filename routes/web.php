@@ -49,7 +49,7 @@ Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
 
-Route::prefix('admin')->middleware(['auth', 'is_admin'])->group(function () {
+Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('kelola-user', App\Http\Controllers\Admin\KelolaUserController::class);
 });
 Route::resource('kelola-user', KelolaUserController::class);
@@ -95,28 +95,19 @@ Route::middleware(['auth', PreventBackHistory::class])->group(function () {
     Route::get('/hod/dashboard', [HodController::class, 'dashboard'])->name('hod.dashboard');
     Route::get('/staff/dashboard', [StaffController::class, 'dashboard'])->name('staff.dashboard');
     Route::get('/pm/dashboard', [PMController::class, 'index'])->name('pm.dashboard');
-    Route::post('/pm/projects/{project}/documents', [ProjectDocumentController::class, 'store'])
-        ->name('pm.project.documents.store');
-    Route::post('/staff/projects/{project}/documents', [DocumentStaffController::class, 'store'])
-        ->name('staff.project.documents.store');
-    Route::get('/project/{id}', [ProjectStaffController::class, 'show'])->name('staff.project.show');
 
-    // Profil
+    // Profil routes for all authenticated users
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Projects
+    // Projects - accessible to all authenticated users
     Route::resource('projects', ProjectController::class);
     Route::post('/projects/ajax-store', [ProjectController::class, 'ajaxStore'])->name('projects.ajax.store');
     Route::delete('/projects/{id}', [ProjectController::class, 'destroy'])->name('projects.destroy');
 });
 
-Route::get('/staff/komisi', [KomisiStaffController::class, 'index'])->name('staff.komisi');
-Route::get('/staff/project', [ProjectStaffController::class, 'index'])->name('staff.project');
 
-Route::get('/pm/komisi', [KomisiPMController::class, 'index'])->name('pm.komisi');
-Route::get('/pm/project', [ProjectPMController::class, 'index'])->name('pm.project');
 
 
 // web.php
@@ -131,28 +122,44 @@ Route::get('/cek', function () {
 
 require __DIR__ . '/auth.php';
 
-Route::middleware(['auth'])->prefix('hod')->group(function () {
+Route::middleware(['auth', 'role:hod'])->prefix('hod')->group(function () {
     Route::get('/project', [HodProjectController::class, 'index'])->name('hod.project');
     Route::get('/komisi', [HodKomisiController::class, 'index'])->name('hod.komisi');
     Route::get('/project/{id}', [HodProjectController::class, 'show'])->name('hod.project.show');
+    Route::get('/komisi/{project_id}', [HodKomisiController::class, 'show'])->name('hod.komisi.show');
+    Route::get('/komisi-total', [HodKomisiController::class, 'totalPerPersonel'])->name('hod.komisi.total');
+    Route::get('/komisi-total-bulanan', [HodKomisiController::class, 'totalPerPersonelBulananTable'])->name('hod.komisi.total.bulanan');
     Route::post('/komisi/{id}/verifikasi', [HodKomisiController::class, 'verifikasiAjax'])->name('hod.komisi.verifikasi');
     Route::post('/komisi/{id}/batalkan', [HodKomisiController::class, 'batalkanVerifikasiAjax'])->name('hod.komisi.batalkan');
 });
-// routes/web.php
-Route::post('/komisi/store', [KomisiPMController::class, 'store'])->name('komisi.store');
-Route::get('/komisi', [KomisiPMController::class, 'index'])->name('pm.komisi');
-Route::get('/pm/komisi/{project_id}', [KomisiPMController::class, 'show'])->name('pm.komisi.show');
-Route::get('/staff/komisi/{project_id}', [KomisiStaffController::class, 'show'])->name('staff.komisi.show');
-Route::get('/admin/komisi/{project_id}', [KomisiController::class, 'show'])->name('admin.komisi.show');
-Route::get('/hod/komisi/{project_id}', [HodKomisiController::class, 'show'])->name('hod.komisi.show');
-Route::get('/pm/komisi-total', [KomisiPMController::class, 'totalPerPersonel'])->name('pm.komisi.total');
-Route::get('/staff/komisi-total', [KomisiStaffController::class, 'totalPerPersonel'])->name('staff.komisi.total');
-Route::get('/hod/komisi-total', [HodKomisiController::class, 'totalPerPersonel'])->name('hod.komisi.total');
-Route::get('/admin/komisi-total', [KomisiController::class, 'totalPerPersonel'])->name('admin.komisi.total');
-Route::get('/pm/komisi-total-bulanan', [KomisiPMController::class, 'totalPerPersonelBulananTable'])->name('pm.komisi.total.bulanan');
-Route::get('/staff/komisi-total-bulanan', [KomisiStaffController::class, 'totalPerPersonelBulananTable'])->name('staff.komisi.total.bulanan');
-Route::get('/hod/komisi-total-bulanan', [HodKomisiController::class, 'totalPerPersonelBulananTable'])->name('hod.komisi.total.bulanan');
-Route::get('/admin/komisi-total-bulanan', [KomisiController::class, 'totalPerPersonelBulananTable'])->name('admin.komisi.total.bulanan');
+// PM routes - protected with role middleware
+Route::middleware(['auth', 'role:pm'])->prefix('pm')->group(function () {
+    Route::get('/komisi', [KomisiPMController::class, 'index'])->name('pm.komisi');
+    Route::get('/project', [ProjectPMController::class, 'index'])->name('pm.project');
+    Route::get('/komisi/{project_id}', [KomisiPMController::class, 'show'])->name('pm.komisi.show');
+    Route::get('/komisi-total', [KomisiPMController::class, 'totalPerPersonel'])->name('pm.komisi.total');
+    Route::get('/komisi-total-bulanan', [KomisiPMController::class, 'totalPerPersonelBulananTable'])->name('pm.komisi.total.bulanan');
+    Route::post('/komisi/store', [KomisiPMController::class, 'store'])->name('komisi.store');
+    Route::post('/projects/{project}/documents', [ProjectDocumentController::class, 'store'])->name('pm.project.documents.store');
+});
+
+// Staff routes - protected with role middleware  
+Route::middleware(['auth', 'role:staff'])->prefix('staff')->group(function () {
+    Route::get('/komisi', [KomisiStaffController::class, 'index'])->name('staff.komisi');
+    Route::get('/project', [ProjectStaffController::class, 'index'])->name('staff.project');
+    Route::get('/komisi/{project_id}', [KomisiStaffController::class, 'show'])->name('staff.komisi.show');
+    Route::get('/komisi-total', [KomisiStaffController::class, 'totalPerPersonel'])->name('staff.komisi.total');
+    Route::get('/komisi-total-bulanan', [KomisiStaffController::class, 'totalPerPersonelBulananTable'])->name('staff.komisi.total.bulanan');
+    Route::get('/project/{id}', [ProjectStaffController::class, 'show'])->name('staff.project.show');
+    Route::post('/projects/{project}/documents', [DocumentStaffController::class, 'store'])->name('staff.project.documents.store');
+});
+
+// Admin routes - protected with role middleware
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/komisi/{project_id}', [KomisiController::class, 'show'])->name('admin.komisi.show');
+    Route::get('/komisi-total', [KomisiController::class, 'totalPerPersonel'])->name('admin.komisi.total');
+    Route::get('/komisi-total-bulanan', [KomisiController::class, 'totalPerPersonelBulananTable'])->name('admin.komisi.total.bulanan');
+});
 
 //======= notifikasi ======
 Route::get('/notifications', function () {
