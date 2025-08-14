@@ -271,7 +271,7 @@
         
     </li>
 </div>
-<script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const badge = document.getElementById('pmNotificationBadge');
@@ -302,26 +302,32 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     loadNotifications();
 
-    // Pusher listener
-    var pusher = new Pusher('{{ env('PUSHER_APP_KEY') }}', {
-        cluster: '{{ env('PUSHER_APP_CLUSTER') }}',
-        authEndpoint: '/broadcasting/auth',
-        auth: { headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }
-    });
+    // Pusher listener (only if configured)
+    @if(env('PUSHER_APP_KEY'))
+    try {
+        var pusher = new Pusher('{{ env('PUSHER_APP_KEY') }}', {
+            cluster: '{{ env('PUSHER_APP_CLUSTER', 'mt1') }}',
+            authEndpoint: '/broadcasting/auth',
+            auth: { headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }
+        });
 
-    var channel = pusher.subscribe('private-pm-notifications.{{ auth()->id() }}');
-    channel.bind('new-pm-notification', function(data) {
-        badge.classList.remove('d-none');
-        badge.textContent = parseInt(badge.textContent) + 1;
+        var channel = pusher.subscribe('private-pm-notifications.{{ auth()->id() }}');
+        channel.bind('new-pm-notification', function(data) {
+            badge.classList.remove('d-none');
+            badge.textContent = parseInt(badge.textContent) + 1;
 
-        const newNotif = `
-            <li class="p-3 border-bottom">
-                <div class="fw-bold text-primary mb-1">Work Order Baru</div>
-                <div class="small text-muted">${data.message}</div>
-            </li>
-        `;
-        list.innerHTML = newNotif + list.innerHTML;
-    });
+            const newNotif = `
+                <li class="p-3 border-bottom">
+                    <div class="fw-bold text-primary mb-1">Work Order Baru</div>
+                    <div class="small text-muted">${data.message}</div>
+                </li>
+            `;
+            list.innerHTML = newNotif + list.innerHTML;
+        });
+    } catch (error) {
+        console.log('Pusher not configured or failed to connect:', error);
+    }
+    @endif
 
     // Tombol tandai semua dibaca
     document.getElementById('markAllPMRead').addEventListener('click', function(e) {
@@ -881,47 +887,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Setup Laravel Echo for real-time notifications (optional - jika menggunakan Pusher)
-    @if(config('broadcasting.default') === 'pusher')
-    window.Echo = new Echo({
-        broadcaster: 'pusher',
-        key: '{{ config('broadcasting.connections.pusher.key') }}',
-        cluster: '{{ config('broadcasting.connections.pusher.options.cluster') }}',
-        forceTLS: true
-    });
-
-    // Listen for real-time notifications
-    window.Echo.private(`user.{{ Auth::id() }}`)
-        .notification((notification) => {
-            // Show browser notification if permitted
-            if (Notification.permission === 'granted') {
-                new Notification('Work Order Baru', {
-                    body: notification.message,
-                    icon: '/images/desnet-logo.png'
-                });
-            }
-
-            // Reload notifications
-            loadNotifications();
-
-            // Show toast notification
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'info',
-                title: 'Notifikasi Baru',
-                text: notification.message,
-                showConfirmButton: false,
-                timer: 5000,
-                timerProgressBar: true
-            });
-        });
-
-    // Request browser notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
-    @endif
+    // Refresh notifications every 30 seconds  
+    setInterval(loadNotifications, 30000);
 });
 </script>
 

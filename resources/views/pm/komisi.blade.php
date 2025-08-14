@@ -120,40 +120,51 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.btn-input-komisi').forEach(btn => {
-        btn.addEventListener('click', function () {
-            let projectId = this.dataset.project;
-            let judul = this.dataset.judul;
-            let nilai = this.dataset.nilai;
-            let personel = JSON.parse(this.dataset.personel);
+    // Ensure Bootstrap is loaded
+    function ensureBootstrap(callback) {
+        if (typeof bootstrap !== 'undefined') {
+            callback();
+        } else {
+            setTimeout(() => ensureBootstrap(callback), 100);
+        }
+    }
 
-            document.getElementById('project_id').value = projectId;
-            document.getElementById('judul_proyek').textContent = judul;
-            document.getElementById('nilai_proyek').textContent = parseFloat(nilai).toLocaleString('id-ID');
+    ensureBootstrap(function() {
+        document.querySelectorAll('.btn-input-komisi').forEach(btn => {
+            btn.addEventListener('click', function () {
+                let projectId = this.dataset.project;
+                let judul = this.dataset.judul;
+                let nilai = this.dataset.nilai;
+                let personel = JSON.parse(this.dataset.personel);
 
-            let container = document.getElementById('list_personel');
-            container.innerHTML = '';
+                document.getElementById('project_id').value = projectId;
+                document.getElementById('judul_proyek').textContent = judul;
+                document.getElementById('nilai_proyek').textContent = parseFloat(nilai).toLocaleString('id-ID');
 
-            personel.forEach((p, index) => {
-                let labelNama = `Personel ${index + 1}`;
-                container.innerHTML += `
-                  <div class="row align-items-center mb-3">
-                    <div class="col-md-4">
-                      <label class="form-label mb-0">${labelNama}</label>
-                      <input type="text" class="form-control" value="${p.nama}" readonly>
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label mb-0">Komisi:</label>
-                      <div class="input-group">
-                        <input type="number" name="komisi[${p.id}]" step="0.01" class="form-control" required>
-                        <span class="input-group-text">%</span>
+                let container = document.getElementById('list_personel');
+                container.innerHTML = '';
+
+                personel.forEach((p, index) => {
+                    let labelNama = `Personel ${index + 1}`;
+                    container.innerHTML += `
+                      <div class="row align-items-center mb-3">
+                        <div class="col-md-4">
+                          <label class="form-label mb-0">${labelNama}</label>
+                          <input type="text" class="form-control" value="${p.nama}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                          <label class="form-label mb-0">Komisi:</label>
+                          <div class="input-group">
+                            <input type="number" name="komisi[${p.id}]" step="0.01" class="form-control" required>
+                            <span class="input-group-text">%</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                `;
-            });
+                    `;
+                });
 
-            new bootstrap.Modal(document.getElementById('modalKomisi')).show();
+                new bootstrap.Modal(document.getElementById('modalKomisi')).show();
+            });
         });
     });
 });
