@@ -1,0 +1,162 @@
+<?php $__env->startSection('title', 'Komisi pm'); ?>
+
+<?php $__env->startSection('content'); ?>
+  <!-- Tombol Filter -->
+  <div class="mb-3">
+      <a href="<?php echo e(route('pm.komisi.total.bulanan')); ?>" class="btn btn-warning">Lihat Total Komisi Per Bulan</a>
+      <a href="<?php echo e(route('pm.komisi.total')); ?>" class="btn btn-primary">Lihat Total Komisi</a>
+  </div>
+
+  <h4 class="fw-bold mb-4">Komisi Bulanan</h4>
+
+  <!-- Tabel Komisi -->
+  <div class="table-responsive">
+    <table class="table table-bordered bg-white">
+      <thead class="table-light">
+        <tr>
+          <th>No</th>
+          <th>Judul Proyek</th>
+          <th>Personel</th>
+          <th>Nilai Proyek</th>
+          <th>Dokumen</th>
+          <th>Total Komisi</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php $__empty_1 = true; $__currentLoopData = $projects; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $project): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+        <tr>
+          <td><?php echo e($loop->iteration); ?></td>
+          <td><?php echo e($project->judul); ?></td>
+          <td>
+              <?php echo e($project->projectPersonel->map(function($p) {
+                  return $p->user ? $p->user->name : '(User tidak ditemukan)';
+              })->join(', ') ?: '-'); ?>
+
+          </td>
+          <td><?php echo e(number_format($project->nilai ?? 0, 0, ',', '.')); ?></td>
+          <td>
+            <div class="text-small">
+              <div class="text-success">✓ Disetujui: <?php echo e($project->approved_documents); ?></div>
+              <div class="text-warning">⏳ Pending: <?php echo e($project->pending_documents); ?></div>
+              <div class="text-primary">📋 Total: <?php echo e($project->total_documents); ?></div>
+            </div>
+          </td>
+          <td>
+            <span class="badge bg-primary"><?php echo e(number_format($project->total_komisi, 0, ',', '.')); ?></span>
+          </td>
+          <td>
+            <a href="<?php echo e(route('pm.komisi.show', $project->id)); ?>" class="btn btn-sm btn-success">Detail</a>
+            <button 
+              class="btn btn-sm btn-warning btn-input-komisi" 
+              data-project="<?php echo e($project->id); ?>"
+              data-judul="<?php echo e($project->judul); ?>"
+              data-nilai="<?php echo e($project->nilai); ?>"
+              data-personel='<?php echo json_encode($project->projectPersonel->map(function($p) {
+                  return [
+                      'id' => $p->id, 'nama' => $p->user->name ?? '(User tidak ditemukan)'
+                  ];
+              }), 512) ?>'>
+              Input Komisi
+            </button>
+          </td>
+        </tr>
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+        <tr>
+          <td colspan="5" class="text-center text-muted">Tidak ada data komisi.</td>
+        </tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+
+<!-- Modal Input Komisi -->
+<div class="modal fade" id="modalKomisi" tabindex="-1" aria-labelledby="modalKomisiLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form action="<?php echo e(route('komisi.store')); ?>" method="POST">
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="project_id" id="project_id">
+
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="modalKomisiLabel">Input Komisi</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Info Proyek -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Judul Proyek:</label>
+            <div id="judul_proyek" class="fw-bold"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nilai Proyek:</label>
+            <div id="nilai_proyek" class="fw-bold text-dark"></div>
+          </div>
+
+          <!-- Input Margin -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Input Nilai Margin:</label>
+            <input type="number" step="0.01" name="margin" class="form-control" required>
+          </div>
+
+          <!-- Komisi Personel -->
+          <h6 class="fw-bold mb-3">Komisi Personel</h6>
+          <div id="list_personel"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startPush('scripts'); ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.btn-input-komisi').forEach(btn => {
+        btn.addEventListener('click', function () {
+            let projectId = this.dataset.project;
+            let judul = this.dataset.judul;
+            let nilai = this.dataset.nilai;
+            let personel = JSON.parse(this.dataset.personel);
+
+            document.getElementById('project_id').value = projectId;
+            document.getElementById('judul_proyek').textContent = judul;
+            document.getElementById('nilai_proyek').textContent = parseFloat(nilai).toLocaleString('id-ID');
+
+            let container = document.getElementById('list_personel');
+            container.innerHTML = '';
+
+            personel.forEach((p, index) => {
+                let labelNama = `Personel ${index + 1}`;
+                container.innerHTML += `
+                  <div class="row align-items-center mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label mb-0">${labelNama}</label>
+                      <input type="text" class="form-control" value="${p.nama}" readonly>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label mb-0">Komisi:</label>
+                      <div class="input-group">
+                        <input type="number" name="komisi[${p.id}]" step="0.01" class="form-control" required>
+                        <span class="input-group-text">%</span>
+                      </div>
+                    </div>
+                  </div>
+                `;
+            });
+
+            new bootstrap.Modal(document.getElementById('modalKomisi')).show();
+        });
+    });
+});
+</script>
+<?php $__env->stopPush(); ?>
+
+
+<?php echo $__env->make('layouts.pm', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /home/runner/work/Clone-Project-Review/Clone-Project-Review/resources/views/pm/komisi.blade.php ENDPATH**/ ?>
