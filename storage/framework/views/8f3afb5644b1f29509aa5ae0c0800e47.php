@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Dashboard PM</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 
   <!-- Bootstrap, Font & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -227,16 +227,17 @@
 <!-- Sidebar -->
 <div class="sidebar d-flex flex-column" style="height: 100vh;">
   <div class="text-center mb-3">
-    <img src="{{ asset('images/desnet-logo.png') }}" alt="Logo" class="img-fluid mb-2">
+    <img src="<?php echo e(asset('images/desnet-logo.png')); ?>" alt="Logo" class="img-fluid mb-2">
     <div class="role-label" id="openAccountModal" style="cursor:pointer;">
-      <i class="bi bi-person-fill"></i> {{ Auth::user()->role }}
+      <i class="bi bi-person-fill"></i> <?php echo e(Auth::user()->role); ?>
+
     </div>
   </div>
 
   <nav class="nav flex-column mb-auto">
-    <a href="{{ route('pm.dashboard') }}" class="nav-link {{ Request::is('pm/dashboard') ? 'active' : '' }}">Beranda</a>
-    <a href="{{ route('pm.project') }}" class="nav-link {{ Request::is('pm/project') ? 'active' : '' }}">Project</a>
-    <a href="{{ route('pm.komisi') }}" class="nav-link {{ Request::is('pm/komisi') ? 'active' : '' }}">Komisi</a>
+    <a href="<?php echo e(route('pm.dashboard')); ?>" class="nav-link <?php echo e(Request::is('pm/dashboard') ? 'active' : ''); ?>">Beranda</a>
+    <a href="<?php echo e(route('pm.project')); ?>" class="nav-link <?php echo e(Request::is('pm/project') ? 'active' : ''); ?>">Project</a>
+    <a href="<?php echo e(route('pm.komisi')); ?>" class="nav-link <?php echo e(Request::is('pm/komisi') ? 'active' : ''); ?>">Komisi</a>
   </nav>
 
   <!-- Logout di paling bawah -->
@@ -271,7 +272,7 @@
         
     </li>
 </div>
-
+<script src="https://js.pusher.com/7.2/pusher.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const badge = document.getElementById('pmNotificationBadge');
@@ -302,39 +303,33 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     loadNotifications();
 
-    // Pusher listener (only if configured)
-    @if(env('PUSHER_APP_KEY'))
-    try {
-        var pusher = new Pusher('{{ env('PUSHER_APP_KEY') }}', {
-            cluster: '{{ env('PUSHER_APP_CLUSTER', 'mt1') }}',
-            authEndpoint: '/broadcasting/auth',
-            auth: { headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }
-        });
+    // Pusher listener
+    var pusher = new Pusher('<?php echo e(env('PUSHER_APP_KEY')); ?>', {
+        cluster: '<?php echo e(env('PUSHER_APP_CLUSTER')); ?>',
+        authEndpoint: '/broadcasting/auth',
+        auth: { headers: { 'X-CSRF-TOKEN': '<?php echo e(csrf_token()); ?>' } }
+    });
 
-        var channel = pusher.subscribe('private-pm-notifications.{{ auth()->id() }}');
-        channel.bind('new-pm-notification', function(data) {
-            badge.classList.remove('d-none');
-            badge.textContent = parseInt(badge.textContent) + 1;
+    var channel = pusher.subscribe('private-pm-notifications.<?php echo e(auth()->id()); ?>');
+    channel.bind('new-pm-notification', function(data) {
+        badge.classList.remove('d-none');
+        badge.textContent = parseInt(badge.textContent) + 1;
 
-            const newNotif = `
-                <li class="p-3 border-bottom">
-                    <div class="fw-bold text-primary mb-1">Work Order Baru</div>
-                    <div class="small text-muted">${data.message}</div>
-                </li>
-            `;
-            list.innerHTML = newNotif + list.innerHTML;
-        });
-    } catch (error) {
-        console.log('Pusher not configured or failed to connect:', error);
-    }
-    @endif
+        const newNotif = `
+            <li class="p-3 border-bottom">
+                <div class="fw-bold text-primary mb-1">Work Order Baru</div>
+                <div class="small text-muted">${data.message}</div>
+            </li>
+        `;
+        list.innerHTML = newNotif + list.innerHTML;
+    });
 
     // Tombol tandai semua dibaca
     document.getElementById('markAllPMRead').addEventListener('click', function(e) {
         e.preventDefault();
         fetch('/pm/notifications/mark-all-read', { 
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            headers: { 'X-CSRF-TOKEN': '<?php echo e(csrf_token()); ?>' }
         }).then(() => {
             badge.classList.add('d-none');
             list.innerHTML = '<li class="p-3 text-muted text-center">Tidak ada notifikasi baru</li>';
@@ -365,28 +360,31 @@ document.addEventListener('DOMContentLoaded', function () {
           </tr>
         </thead>
         <tbody>
-          @php $projects = $projects ?? collect(); @endphp
-          @forelse ($projects as $project)
+          <?php $projects = $projects ?? collect(); ?>
+          <?php $__empty_1 = true; $__currentLoopData = $projects; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $project): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
             <tr>
-              <td>{{ $loop->iteration }}</td>
-              <td>{{ $project->judul }}</td>
+              <td><?php echo e($loop->iteration); ?></td>
+              <td><?php echo e($project->judul); ?></td>
               <td>
-                <span class="status-dot {{ $project->status_dokumen === 'Sudah Diajukan' ? 'dot-success' : 'dot-warning' }}"></span>
-                {{ $project->status_dokumen ?? 'Belum Diajukan' }}
+                <span class="status-dot <?php echo e($project->status_dokumen === 'Sudah Diajukan' ? 'dot-success' : 'dot-warning'); ?>"></span>
+                <?php echo e($project->status_dokumen ?? 'Belum Diajukan'); ?>
+
               </td>
               <td>
-                <span class="status-dot {{ $project->status_komisi === 'Disetujui' ? 'dot-success' : 'dot-warning' }}"></span>
-                {{ $project->status_komisi ?? 'Belum Disetujui' }}
+                <span class="status-dot <?php echo e($project->status_komisi === 'Disetujui' ? 'dot-success' : 'dot-warning'); ?>"></span>
+                <?php echo e($project->status_komisi ?? 'Belum Disetujui'); ?>
+
               </td>
-              <td>{{ number_format($project->nilai ?? 0, 0, ',', '.') }}</td>
+              <td><?php echo e(number_format($project->nilai ?? 0, 0, ',', '.')); ?></td>
               <td>
-                {{ $project->projectPersonel->map(function($p) {
+                <?php echo e($project->projectPersonel->map(function($p) {
                     return $p->user ? $p->user->name : '(User tidak ditemukan)';
-                })->join(', ') ?: '-' }}
+                })->join(', ') ?: '-'); ?>
+
               </td>
               <td>
                 <!-- Tombol Detail -->
-                <a href="{{ route('projects.show', $project->id) }}" 
+                <a href="<?php echo e(route('projects.show', $project->id)); ?>" 
                   class="btn btn-sm btn-success text-white" 
                   style="background-color: #11df11;">
                   Detail
@@ -396,22 +394,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 <button class="btn btn-sm btn-primary text-white" 
                   style="background-color: #5051f9;" 
                   data-bs-toggle="modal" 
-                  data-bs-target="#modalTambah{{ $project->id }}">
+                  data-bs-target="#modalTambah<?php echo e($project->id); ?>">
                   Tambah
                 </button>
 
                 <!-- Modal Tambah Dokumen -->
-                <div class="modal fade" id="modalTambah{{ $project->id }}" tabindex="-1" aria-labelledby="modalLabel{{ $project->id }}" aria-hidden="true">
+                <div class="modal fade" id="modalTambah<?php echo e($project->id); ?>" tabindex="-1" aria-labelledby="modalLabel<?php echo e($project->id); ?>" aria-hidden="true">
                   <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                       <div class="modal-header">
-                        <h5 class="modal-title" id="modalLabel{{ $project->id }}">
-                          Input Dokumen Proyek: {{ $project->judul }}
+                        <h5 class="modal-title" id="modalLabel<?php echo e($project->id); ?>">
+                          Input Dokumen Proyek: <?php echo e($project->judul); ?>
+
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                       </div>
-                      <form action="{{ route('pm.project.documents.store', $project) }}" method="POST" enctype="multipart/form-data">
-                        @csrf
+                      <form action="<?php echo e(route('pm.project.documents.store', $project)); ?>" method="POST" enctype="multipart/form-data">
+                        <?php echo csrf_field(); ?>
                         <div class="modal-body">
                           <div class="mb-3">
                             <label for="jenis_dokumen" class="form-label">Jenis Dokumen</label>
@@ -440,11 +439,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
               </td>
             </tr>
-          @empty
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
             <tr>
               <td colspan="7" class="text-center text-muted">Tidak ada proyek.</td>
             </tr>
-          @endforelse
+          <?php endif; ?>
         </tbody>
       </table>
     </div>
@@ -463,15 +462,15 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="modal-body">
           <div class="d-flex justify-content-between py-2">
             <strong>Nama</strong>
-            <span id="accountName">{{ Auth::user()->name }}</span>
+            <span id="accountName"><?php echo e(Auth::user()->name); ?></span>
           </div>
           <div class="d-flex justify-content-between py-2">
             <strong>Email</strong>
-            <span id="accountEmail">{{ Auth::user()->email }}</span>
+            <span id="accountEmail"><?php echo e(Auth::user()->email); ?></span>
           </div>
           <div class="d-flex justify-content-between py-2">
             <strong>Role</strong>
-            <span id="accountRole">{{ Auth::user()->role }}</span>
+            <span id="accountRole"><?php echo e(Auth::user()->role); ?></span>
           </div>
           <div class="d-flex justify-content-between py-2">
             <strong>Password</strong>
@@ -485,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
   </div>
 
-  {{-- Modal Edit User --}}
+  
   <div class="modal fade" id="modalEditUser" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -496,8 +495,8 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="modal-body">
           <div id="errorEditUser" class="alert alert-danger d-none"></div>
           <form id="formEditUser">
-            @csrf
-            @method('PUT')
+            <?php echo csrf_field(); ?>
+            <?php echo method_field('PUT'); ?>
             <input type="hidden" id="editUserId" name="id">
             
             <div class="mb-3">
@@ -566,8 +565,8 @@ document.addEventListener('DOMContentLoaded', function () {
         <h5 class="fw-bold mt-3">Apakah Anda yakin ingin keluar?</h5>
         <p class="text-muted">Tindakan ini akan mengeluarkan anda dari aplikasi</p>
 
-        <form method="POST" action="{{ route('logout') }}">
-          @csrf
+        <form method="POST" action="<?php echo e(route('logout')); ?>">
+          <?php echo csrf_field(); ?>
           <div class="d-flex justify-content-center gap-2 mt-3">
             <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Batal</button>
             <button type="button" class="btn btn-dark" id="btnConfirmLogout">Yakin</button>
@@ -581,9 +580,9 @@ document.addEventListener('DOMContentLoaded', function () {
   <div class="card-box mb-4">
     <h6 class="fw-bold mb-3">Dokumen</h6>
     <div class="row g-3">
-      <div class="col-md-4"><div class="doc-box border-primary"><i class="bi bi-folder-fill text-primary"></i><div class="title">Total Dokumen</div><div class="number">{{ $stats['total'] ?? 0 }}</div></div></div>
-      <div class="col-md-4"><div class="doc-box border-warning"><i class="bi bi-folder-symlink-fill text-warning"></i><div class="title">Dokumen Revisi</div><div class="number">{{ $stats['revisi'] ?? 0 }}</div></div></div>
-      <div class="col-md-4"><div class="doc-box border-success"><i class="bi bi-folder-check text-success"></i><div class="title">Dokumen Selesai</div><div class="number">{{ $stats['selesai'] ?? 0 }}</div></div></div>
+      <div class="col-md-4"><div class="doc-box border-primary"><i class="bi bi-folder-fill text-primary"></i><div class="title">Total Dokumen</div><div class="number"><?php echo e($stats['total'] ?? 0); ?></div></div></div>
+      <div class="col-md-4"><div class="doc-box border-warning"><i class="bi bi-folder-symlink-fill text-warning"></i><div class="title">Dokumen Revisi</div><div class="number"><?php echo e($stats['revisi'] ?? 0); ?></div></div></div>
+      <div class="col-md-4"><div class="doc-box border-success"><i class="bi bi-folder-check text-success"></i><div class="title">Dokumen Selesai</div><div class="number"><?php echo e($stats['selesai'] ?? 0); ?></div></div></div>
     </div>
   </div>
 
@@ -591,8 +590,8 @@ document.addEventListener('DOMContentLoaded', function () {
   <div class="card-box mb-4">
     <h6 class="fw-bold mb-3">Komisi</h6>
     <div class="row g-3">
-      <div class="col-md-6"><div class="komisi-box border-primary"><div class="title"><i class="bi bi-receipt"></i> Komisi Bulan ini</div><div class="amount">Rp. {{ number_format($komisi['bulan'] ?? 0, 0, ',', '.') }}</div></div></div>
-      <div class="col-md-6"><div class="komisi-box border-primary"><div class="title"><i class="bi bi-receipt"></i> Komisi Tahun ini</div><div class="amount">Rp. {{ number_format($komisi['tahun'] ?? 0, 0, ',', '.') }}</div></div></div>
+      <div class="col-md-6"><div class="komisi-box border-primary"><div class="title"><i class="bi bi-receipt"></i> Komisi Bulan ini</div><div class="amount">Rp. <?php echo e(number_format($komisi['bulan'] ?? 0, 0, ',', '.')); ?></div></div></div>
+      <div class="col-md-6"><div class="komisi-box border-primary"><div class="title"><i class="bi bi-receipt"></i> Komisi Tahun ini</div><div class="amount">Rp. <?php echo e(number_format($komisi['tahun'] ?? 0, 0, ',', '.')); ?></div></div></div>
     </div>
   </div>
 </div>
@@ -633,9 +632,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (btnOpenAccount) {
         btnOpenAccount.addEventListener("click", function () {
-            document.getElementById("accountName").innerText = "{{ Auth::user()->name }}";
-            document.getElementById("accountEmail").innerText = "{{ Auth::user()->email }}";
-            document.getElementById("accountRole").innerText = "{{ Auth::user()->role }}";
+            document.getElementById("accountName").innerText = "<?php echo e(Auth::user()->name); ?>";
+            document.getElementById("accountEmail").innerText = "<?php echo e(Auth::user()->email); ?>";
+            document.getElementById("accountRole").innerText = "<?php echo e(Auth::user()->role); ?>";
             document.getElementById("accountPassword").innerText = "";
             modalAccount.show();
         });
@@ -644,9 +643,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (btnEditAkun) {
         btnEditAkun.addEventListener("click", function (e) {
             e.preventDefault();
-            document.getElementById('editName').value = "{{ Auth::user()->name }}";
-            document.getElementById('editEmail').value = "{{ Auth::user()->email }}";
-            document.getElementById('editRole').value = "{{ Auth::user()->role }}";
+            document.getElementById('editName').value = "<?php echo e(Auth::user()->name); ?>";
+            document.getElementById('editEmail').value = "<?php echo e(Auth::user()->email); ?>";
+            document.getElementById('editRole').value = "<?php echo e(Auth::user()->role); ?>";
             document.getElementById('editOldPassword').value = '';
             document.getElementById('editPassword').value = '';
             document.getElementById('editPasswordConfirmation').value = '';
@@ -735,7 +734,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (confirmLogoutBtn) {
         confirmLogoutBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            fetch('{{ route('logout') }}', {
+            fetch('<?php echo e(route('logout')); ?>', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -887,10 +886,49 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Refresh notifications every 30 seconds  
-    setInterval(loadNotifications, 30000);
+    // Setup Laravel Echo for real-time notifications (optional - jika menggunakan Pusher)
+    <?php if(config('broadcasting.default') === 'pusher'): ?>
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        key: '<?php echo e(config('broadcasting.connections.pusher.key')); ?>',
+        cluster: '<?php echo e(config('broadcasting.connections.pusher.options.cluster')); ?>',
+        forceTLS: true
+    });
+
+    // Listen for real-time notifications
+    window.Echo.private(`user.<?php echo e(Auth::id()); ?>`)
+        .notification((notification) => {
+            // Show browser notification if permitted
+            if (Notification.permission === 'granted') {
+                new Notification('Work Order Baru', {
+                    body: notification.message,
+                    icon: '/images/desnet-logo.png'
+                });
+            }
+
+            // Reload notifications
+            loadNotifications();
+
+            // Show toast notification
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'Notifikasi Baru',
+                text: notification.message,
+                showConfirmButton: false,
+                timer: 5000,
+                timerProgressBar: true
+            });
+        });
+
+    // Request browser notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    <?php endif; ?>
 });
 </script>
 
 </body>
-</html>
+</html><?php /**PATH /home/runner/work/Clone-Project-Review/Clone-Project-Review/resources/views/pm/dashboard.blade.php ENDPATH**/ ?>

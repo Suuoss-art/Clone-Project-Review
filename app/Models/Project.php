@@ -29,7 +29,28 @@ class Project extends Model
   }
   public function komisi()
   {
-    return $this->hasMany(\App\Models\ProjectCommission::class, 'project_id');
+    return $this->hasMany(Komisi::class, 'project_id');
+  }
+
+  // Document count methods
+  public function getTotalDocumentsAttribute()
+  {
+    return $this->projectDocuments()->count();
+  }
+
+  public function getApprovedDocumentsAttribute()
+  {
+    return $this->projectDocuments()->where('status', 'Disetujui')->count();
+  }
+
+  public function getPendingDocumentsAttribute()
+  {
+    return $this->projectDocuments()->where('status', 'Belum Disetujui')->count();
+  }
+
+  public function getTotalKomisiAttribute()
+  {
+    return $this->komisi()->sum('nilai_komisi');
   }
 
 }

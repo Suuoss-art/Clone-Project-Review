@@ -19,6 +19,8 @@
           <th>Judul Proyek</th>
           <th>Personel</th>
           <th>Nilai Proyek</th>
+          <th>Dokumen</th>
+          <th>Total Komisi</th>
           <th>Status Komisi</th>
           <th>Aksi</th>
         </tr>
@@ -34,6 +36,16 @@
             })->join(', ') ?: '-' }}
           </td>
           <td>{{ number_format($project->nilai ?? 0, 0, ',', '.') }}</td>
+          <td>
+            <div class="text-small">
+              <div class="text-success">✓ Disetujui: {{ $project->approved_documents }}</div>
+              <div class="text-warning">⏳ Pending: {{ $project->pending_documents }}</div>
+              <div class="text-primary">📋 Total: {{ $project->total_documents }}</div>
+            </div>
+          </td>
+          <td>
+            <span class="badge bg-primary">{{ number_format($project->total_komisi, 0, ',', '.') }}</span>
+          </td>
           <td class="status-cell">
             @if($project->status_komisi == 'Disetujui')
               <span class="badge bg-success">Disetujui</span>

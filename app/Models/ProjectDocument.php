@@ -13,10 +13,24 @@ class ProjectDocument extends Model
         'project_id',
         'jenis_dokumen',
         'file_path',
+        'nama_asli',
         'keterangan',
+        'status',
+        'approved_at',
+        'approved_by'
     ];
+
+    protected $casts = [
+        'approved_at' => 'datetime',
+    ];
+
     public function project()
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

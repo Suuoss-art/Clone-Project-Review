@@ -27,7 +27,12 @@ class Komisi extends Model
 
     public function user()
     {
-        return $this->belongsTo(ProjectPersonel::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class, 'project_id');
     }
 
 }
